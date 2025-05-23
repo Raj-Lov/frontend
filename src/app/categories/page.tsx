@@ -72,24 +72,28 @@ export default function CategoriesPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // In a real implementation, fetch categories from API
+  // Fetch categories from API
   useEffect(() => {
-    // Fetch categories from API
-    // Example:
-    // const fetchCategories = async () => {
-    //   setLoading(true);
-    //   try {
-    //     const response = await fetch('/api/categories/tree');
-    //     const data = await response.json();
-    //     setCategories(data);
-    //   } catch (err) {
-    //     setError('Failed to load categories');
-    //     console.error(err);
-    //   } finally {
-    //     setLoading(false);
-    //   }
-    // };
-    // fetchCategories();
+    const fetchCategories = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch('http://localhost:8000/categories/tree');
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+        const data = await response.json();
+        setCategories(data);
+      } catch (err) {
+        console.error('Error fetching categories:', err);
+        setError('Failed to load categories. Using mock data instead.');
+        // Fallback to mock data
+        setCategories(mockCategories);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchCategories();
   }, []);
 
   const breadcrumbs = [

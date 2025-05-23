@@ -20,17 +20,25 @@ export function handleApiError(error: any, defaultMessage: string = 'An error oc
   
   // Handle error based on status code
   if (typeof error === 'number') {
-    redirectBasedOnStatusCode(error);
+    if (error === 404) {
+      throw new Error('Resource not found');
+    } else if (error === 401) {
+      throw new Error('Unauthorized access');
+    } else if (error === 403) {
+      throw new Error('Forbidden access');
+    } else {
+      throw new Error(`Server error: ${error}`);
+    }
   }
   
   // Handle error object with status property
   if (error && typeof error === 'object' && 'status' in error) {
-    redirectBasedOnStatusCode(error.status);
+    throw new Error(`Server error: ${error.status}`);
   }
   
   // Handle error object with statusCode property
   if (error && typeof error === 'object' && 'statusCode' in error) {
-    redirectBasedOnStatusCode(error.statusCode);
+    throw new Error(`Server error: ${error.statusCode}`);
   }
   
   // Default to server error

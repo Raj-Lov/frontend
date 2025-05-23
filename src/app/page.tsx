@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from "next/image";
 import Link from "next/link";
 import MainLayout from '@/components/layout/MainLayout';
 import CategoryCard from '@/components/categories/CategoryCard';
+import ArticleGrid from '@/components/articles/ArticleGrid';
+import { articleApi } from '@/lib/api';
 
 // Mock data for categories
 const animalCategories = [
@@ -77,6 +79,73 @@ const topicCategories = [
 ];
 
 export default function Home() {
+  const [featuredArticles, setFeaturedArticles] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Fetch featured articles
+  useEffect(() => {
+    const fetchArticles = async () => {
+      setLoading(true);
+      try {
+        const articles = await articleApi.getAll();
+        // Use the first 3 articles as featured
+        setFeaturedArticles(articles.slice(0, 3));
+      } catch (err) {
+        console.error('Error fetching articles:', err);
+        // Use mock data as fallback
+        setFeaturedArticles([
+          {
+            id: 1,
+            title: 'Understanding Small Animals Health and Wellness',
+            slug: 'understanding-small-animals-health',
+            excerpt: 'A comprehensive guide to maintaining optimal health for small animals.',
+            publishedAt: new Date().toISOString(),
+            author: {
+              name: 'Dr. Veterinary Expert'
+            },
+            category: {
+              name: 'Small Animals',
+              slug: 'small-animals'
+            }
+          },
+          {
+            id: 2,
+            title: 'Common Diseases in Large Animals',
+            slug: 'common-diseases-in-large-animals',
+            excerpt: 'Learn about the most frequent health issues affecting large animals and how to identify them early.',
+            publishedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+            author: {
+              name: 'Veterinary Specialist'
+            },
+            category: {
+              name: 'Large Animals',
+              slug: 'large-animals'
+            }
+          },
+          {
+            id: 3,
+            title: 'Nutrition Guide for Poultry',
+            slug: 'nutrition-guide-for-poultry',
+            excerpt: 'Essential nutritional information to keep your poultry healthy and thriving.',
+            publishedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
+            author: {
+              name: 'Animal Nutritionist'
+            },
+            category: {
+              name: 'Poultry',
+              slug: 'poultry'
+            }
+          }
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchArticles();
+  }, []);
+  
   return (
     <MainLayout>
       {/* Hero Section */}
@@ -146,6 +215,36 @@ export default function Home() {
               View All Categories
             </Link>
           </div>
+        </div>
+      </section>
+
+      {/* Featured Articles Section */}
+      <section className="py-12 bg-white">
+        <div className="container mx-auto px-4">
+          <div className="flex justify-between items-center mb-8">
+            <h2 className="text-3xl font-bold text-gray-900">Featured Articles</h2>
+            <Link 
+              href="/articles" 
+              className="text-green-600 hover:text-green-700 font-medium"
+            >
+              View all articles →
+            </Link>
+          </div>
+          
+          {loading ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500">Loading articles...</p>
+            </div>
+          ) : error ? (
+            <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-8">
+              <p className="text-red-700">{error}</p>
+            </div>
+          ) : (
+            <ArticleGrid 
+              articles={featuredArticles}
+              columns={3}
+            />
+          )}
         </div>
       </section>
 

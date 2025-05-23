@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import MainLayout from '@/components/layout/MainLayout';
 import CategoryGrid from '@/components/categories/CategoryGrid';
 import CategoryBreadcrumb from '@/components/categories/CategoryBreadcrumb';
+import ArticleGrid from '@/components/articles/ArticleGrid';
 import Link from 'next/link';
 
 // Mock data - replace with actual API call
@@ -82,32 +83,80 @@ export default function CategoryPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // In a real implementation, fetch category data from API
-    // Example:
-    // const fetchCategory = async () => {
-    //   setLoading(true);
-    //   try {
-    //     const response = await fetch(`/api/categories/slug/${slug}`);
-    //     const data = await response.json();
-    //     setCategory(data);
-    //   } catch (err) {
-    //     setError('Failed to load category');
-    //     console.error(err);
-    //   } finally {
-    //     setLoading(false);
-    //   }
-    // };
-    // fetchCategory();
-    
-    // Mock implementation
-    setTimeout(() => {
-      if (slug && mockCategoryData[slug as keyof typeof mockCategoryData]) {
-        setCategory(mockCategoryData[slug as keyof typeof mockCategoryData]);
-      } else {
-        setError('Category not found');
+    const fetchCategory = async () => {
+      if (!slug) return;
+      
+      setLoading(true);
+      try {
+        // First try to get the category by slug
+        const response = await fetch(`http://localhost:8000/categories/slug/${slug}`);
+        
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+        
+        const categoryData = await response.json();
+        
+        // Now get the children if any
+        let childrenData = [];
+        try {
+          const childrenResponse = await fetch(`http://localhost:8000/categories?parent_id=${categoryData.id}`);
+          if (childrenResponse.ok) {
+            childrenData = await childrenResponse.json();
+          }
+        } catch (childErr) {
+          console.error('Error fetching children:', childErr);
+        }
+        
+        // Build breadcrumbs
+        const breadcrumbs = [
+          { name: 'Categories', href: '/categories', current: false },
+        ];
+        
+        if (categoryData.parent_id) {
+          try {
+            const parentResponse = await fetch(`http://localhost:8000/categories/${categoryData.parent_id}`);
+            if (parentResponse.ok) {
+              const parentData = await parentResponse.json();
+              breadcrumbs.push({
+                name: parentData.name,
+                href: `/categories/${parentData.slug}`,
+                current: false
+              });
+            }
+          } catch (parentErr) {
+            console.error('Error fetching parent:', parentErr);
+          }
+        }
+        
+        breadcrumbs.push({
+          name: categoryData.name,
+          href: `/categories/${categoryData.slug}`,
+          current: true
+        });
+        
+        // Combine all data
+        setCategory({
+          ...categoryData,
+          children: childrenData,
+          breadcrumbs
+        });
+      } catch (err) {
+        console.error('Error fetching category:', err);
+        
+        // Fallback to mock data if available
+        if (mockCategoryData[slug as keyof typeof mockCategoryData]) {
+          setCategory(mockCategoryData[slug as keyof typeof mockCategoryData]);
+          setError('Using mock data (API error)');
+        } else {
+          setError('Category not found');
+        }
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
-    }, 500);
+    };
+    
+    fetchCategory();
   }, [slug]);
 
   if (loading) {
@@ -170,14 +219,56 @@ export default function CategoryPage() {
           </div>
         )}
 
-        {/* In a real implementation, you would display articles related to this category here */}
+        {/* Mock articles related to this category */}
         <div className="mt-12">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">Related Articles</h2>
-          <div className="bg-white rounded-lg shadow-md p-8 text-center">
-            <p className="text-gray-600">
-              No articles found for this category yet.
-            </p>
-          </div>
+          <ArticleGrid 
+            title="Related Articles"
+            viewAllLink={`/articles?category=${category.slug}`}
+            articles={[
+              {
+                id: 1,
+                title: `Understanding ${category.name} Health and Wellness`,
+                slug: `understanding-${category.slug}-health`,
+                excerpt: `A comprehensive guide to maintaining optimal health for ${category.name.toLowerCase()}.`,
+                publishedAt: new Date().toISOString(),
+                author: {
+                  name: 'Dr. Veterinary Expert'
+                },
+                category: {
+                  name: category.name,
+                  slug: category.slug
+                }
+              },
+              {
+                id: 2,
+                title: `Common Diseases in ${category.name}`,
+                slug: `common-diseases-in-${category.slug}`,
+                excerpt: `Learn about the most frequent health issues affecting ${category.name.toLowerCase()} and how to identify them early.`,
+                publishedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+                author: {
+                  name: 'Veterinary Specialist'
+                },
+                category: {
+                  name: category.name,
+                  slug: category.slug
+                }
+              },
+              {
+                id: 3,
+                title: `Nutrition Guide for ${category.name}`,
+                slug: `nutrition-guide-for-${category.slug}`,
+                excerpt: `Essential nutritional information to keep your ${category.name.toLowerCase()} healthy and thriving.`,
+                publishedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
+                author: {
+                  name: 'Animal Nutritionist'
+                },
+                category: {
+                  name: category.name,
+                  slug: category.slug
+                }
+              }
+            ]}
+          />
         </div>
       </div>
     </MainLayout>

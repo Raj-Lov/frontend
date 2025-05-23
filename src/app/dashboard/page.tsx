@@ -1,33 +1,158 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import MainLayout from '@/components/layout/MainLayout';
+import { auth, authApi } from '@/lib/auth';
+import { articleApi } from '@/lib/api';
 
 export default function DashboardPage() {
-  // This would be replaced with actual data from the backend
-  const [userData, setUserData] = useState({
-    name: 'John Doe',
-    email: 'john.doe@example.com',
-    role: 'author',
-    profileImage: null,
-    walletBalance: 250.75,
-    articles: 12,
-    drafts: 3,
-    comments: 45,
-    earnings: [
-      { id: 1, amount: 25.00, type: 'content_incentive', date: '2025-05-15', status: 'processed' },
-      { id: 2, amount: 15.50, type: 'view_incentive', date: '2025-05-10', status: 'processed' },
-      { id: 3, amount: 30.25, type: 'like_incentive', date: '2025-05-05', status: 'processed' },
-    ],
-    recentActivity: [
-      { id: 1, type: 'post_published', title: 'Common Diseases in Dairy Cattle', date: '2025-05-18' },
-      { id: 2, type: 'comment_received', title: 'Great article!', date: '2025-05-17' },
-      { id: 3, type: 'post_liked', title: 'Vaccination Schedule for Dogs', date: '2025-05-15' },
-    ]
-  });
-
+  const router = useRouter();
+  const [userData, setUserData] = useState<any>(null);
+  const [userArticles, setUserArticles] = useState<any[]>([]);
+  const [userComments, setUserComments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      setLoading(true);
+      try {
+        // Check if user is authenticated
+        const token = auth.getToken();
+        if (!token) {
+          router.push('/login?redirect=/dashboard');
+          return;
+        }
+
+        // Get user from local storage or fetch from API
+        let user;
+        try {
+          user = auth.getUser();
+          if (!user) {
+            // If not in local storage, try to fetch from API
+            user = await authApi.getProfile(token);
+            // Update local storage with fetched user
+            if (user) {
+              auth.setAuth(token, user);
+            }
+          }
+        } catch (err) {
+          console.error('Error fetching user profile:', err);
+          // If API fails, check if we have a user in local storage
+          user = auth.getUser();
+          if (!user) {
+            throw new Error('Unable to get user profile');
+          }
+        }
+        
+        // Get user articles (in a real implementation)
+        let articles: any[] = [];
+        try {
+          // This would be a real API call to get user's articles
+          // For now, just use mock data
+          articles = [];
+        } catch (err) {
+          console.error('Error fetching user articles:', err);
+        }
+        
+        // Get user comments (in a real implementation)
+        let comments: any[] = [];
+        try {
+          // This would be a real API call to get user's comments
+          // For now, just use mock data
+          comments = [];
+        } catch (err) {
+          console.error('Error fetching user comments:', err);
+        }
+        
+        // Set user data
+        setUserData({
+          name: user.full_name,
+          email: user.email,
+          role: user.role,
+          profileImage: user.avatar,
+          walletBalance: 250.75, // Mock data
+          articles: articles.length,
+          drafts: 0, // Mock data
+          comments: comments.length,
+          earnings: [
+            { id: 1, amount: 25.00, type: 'content_incentive', date: '2025-05-15', status: 'processed' },
+            { id: 2, amount: 15.50, type: 'view_incentive', date: '2025-05-10', status: 'processed' },
+            { id: 3, amount: 30.25, type: 'like_incentive', date: '2025-05-05', status: 'processed' },
+          ],
+          recentActivity: [
+            { id: 1, type: 'post_published', title: 'Common Diseases in Dairy Cattle', date: '2025-05-18' },
+            { id: 2, type: 'comment_received', title: 'Great article!', date: '2025-05-17' },
+            { id: 3, type: 'post_liked', title: 'Vaccination Schedule for Dogs', date: '2025-05-15' },
+          ]
+        });
+        
+        setUserArticles(articles);
+        setUserComments(comments);
+      } catch (err) {
+        console.error('Error fetching user data:', err);
+        setError('Failed to load dashboard data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, [router]);
+
+  if (loading) {
+    return (
+      <MainLayout>
+        <div className="bg-gray-50 min-h-screen py-8">
+          <div className="container mx-auto px-4">
+            <div className="text-center py-12">
+              <p className="text-gray-500">Loading dashboard...</p>
+            </div>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <MainLayout>
+        <div className="bg-gray-50 min-h-screen py-8">
+          <div className="container mx-auto px-4">
+            <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-8">
+              <p className="text-red-700">{error}</p>
+            </div>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (!userData) {
+    return (
+      <MainLayout>
+        <div className="bg-gray-50 min-h-screen py-8">
+          <div className="container mx-auto px-4">
+            <div className="text-center py-12">
+              <p className="text-gray-500">Please log in to view your dashboard.</p>
+              <div className="mt-4">
+                <Link 
+                  href="/login?redirect=/dashboard"
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md"
+                >
+                  Log In
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
@@ -38,11 +163,14 @@ export default function DashboardPage() {
             <div className="flex flex-col md:flex-row items-center">
               <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mb-4 md:mb-0 md:mr-6">
                 {userData.profileImage ? (
-                  <img 
-                    src={userData.profileImage} 
-                    alt={userData.name} 
-                    className="w-full h-full rounded-full object-cover"
-                  />
+                  <div className="relative w-full h-full rounded-full overflow-hidden">
+                    <Image
+                      src={userData.profileImage}
+                      alt={userData.name}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
                 ) : (
                   <span className="text-2xl text-gray-500">{userData.name.charAt(0)}</span>
                 )}
@@ -60,9 +188,20 @@ export default function DashboardPage() {
                 <div className="bg-green-50 p-4 rounded-lg">
                   <p className="text-sm text-green-700">Wallet Balance</p>
                   <p className="text-2xl font-bold text-green-700">₹{userData.walletBalance.toFixed(2)}</p>
-                  <button className="mt-2 bg-green-600 text-white px-4 py-1 rounded-md text-sm hover:bg-green-700">
-                    Withdraw
-                  </button>
+                  <div className="flex flex-col space-y-2 mt-2">
+                    <button className="bg-green-600 text-white px-4 py-1 rounded-md text-sm hover:bg-green-700">
+                      Withdraw
+                    </button>
+                    <button 
+                      onClick={() => {
+                        auth.logout();
+                        router.push('/');
+                      }}
+                      className="bg-gray-200 text-gray-800 px-4 py-1 rounded-md text-sm hover:bg-gray-300"
+                    >
+                      Logout
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -235,11 +374,40 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   
-                  <div className="space-y-4">
-                    <p className="text-gray-500 text-center py-8">
-                      Your published content will appear here.
-                    </p>
-                  </div>
+                  {userArticles.length > 0 ? (
+                    <div className="space-y-4">
+                      {userArticles.map((article) => (
+                        <div key={article.id} className="flex justify-between items-center p-4 border-b border-gray-100">
+                          <div>
+                            <h3 className="font-medium">{article.title}</h3>
+                            <p className="text-sm text-gray-500">
+                              {new Date(article.publishedAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div className="flex space-x-2">
+                            <Link 
+                              href={`/articles/${article.slug}`}
+                              className="text-blue-600 hover:text-blue-700 text-sm"
+                            >
+                              View
+                            </Link>
+                            <Link 
+                              href={`/dashboard/edit-post/${article.id}`}
+                              className="text-green-600 hover:text-green-700 text-sm"
+                            >
+                              Edit
+                            </Link>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <p className="text-gray-500 text-center py-8">
+                        Your published content will appear here.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
